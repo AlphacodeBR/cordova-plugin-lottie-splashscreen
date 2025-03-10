@@ -115,14 +115,12 @@ import Lottie
         let parentView = viewController.view
         parentView?.isUserInteractionEnabled = false
 
-        animationViewContainer = UIView(frame: (parentView?.bounds)!)
+        animationViewContainer = UIView(frame: parentView?.bounds ?? CGRect.zero)
         animationViewContainer?.layer.zPosition = 1
 
         let backgroundColor = getUIModeDependentPreference(basePreferenceName: "LottieBackgroundColor", defaultValue: "#ffffff")
 
-        animationViewContainer?.autoresizingMask = [
-            .flexibleWidth, .flexibleHeight, .flexibleTopMargin, .flexibleLeftMargin, .flexibleBottomMargin, .flexibleRightMargin
-        ]
+        animationViewContainer?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         animationViewContainer?.backgroundColor = UIColor(hex: backgroundColor)
     }
 
@@ -150,61 +148,28 @@ import Lottie
             animationView = LottieAnimationView(filePath: animationLocation)
         }
 
-        calculateAnimationSize(width: width, height: height)
+        // Configurar a animação para ocupar toda a tela
+        animationView?.frame = viewController.view.bounds
+        animationView?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        animationView?.contentMode = .scaleToFill // Ajustar para preencher toda a tela
 
         let loop = (commandDelegate?.settings["LottieLoopAnimation".lowercased()] as? NSString ?? "false").boolValue
         if loop {
             animationView?.loopMode = .loop
         }
-        animationView?.contentMode = .scaleAspectFit
         animationView?.animationSpeed = 1
         animationView?.autoresizesSubviews = true
         animationView?.backgroundBehavior = .pauseAndRestore
     }
 
     private func calculateAnimationSize(width: Int? = nil, height: Int? = nil) {
-        let fullScreenzSize = UIScreen.main.bounds
-        var animationWidth: CGFloat
-        var animationHeight: CGFloat
+        let fullScreenSize = UIScreen.main.bounds
+        var animationWidth: CGFloat = fullScreenSize.width
+        var animationHeight: CGFloat = fullScreenSize.height
 
-        let useFullScreen = (commandDelegate?.settings["LottieFullScreen".lowercased()] as? NSString ?? "false").boolValue
-        if useFullScreen {
-            var autoresizingMask: UIView.AutoresizingMask = [
-                .flexibleTopMargin, .flexibleLeftMargin, .flexibleBottomMargin, .flexibleRightMargin
-            ]
-
-            let portrait =
-                UIApplication.shared.statusBarOrientation == UIInterfaceOrientation.portrait ||
-                UIApplication.shared.statusBarOrientation == UIInterfaceOrientation.portraitUpsideDown
-            autoresizingMask.insert(portrait ? .flexibleWidth : .flexibleHeight)
-
-            animationView?.autoresizingMask = autoresizingMask
-            animationWidth = fullScreenzSize.width
-            animationHeight = fullScreenzSize.height
-        } else {
-            animationView?.autoresizingMask = [.flexibleTopMargin, .flexibleLeftMargin, .flexibleBottomMargin, .flexibleRightMargin]
-
-            let useRelativeSize = (commandDelegate?.settings["LottieRelativeSize".lowercased()] as? NSString ?? "false").boolValue
-            if useRelativeSize {
-                animationWidth = fullScreenzSize.width *
-                    (width != nil ?
-                        CGFloat(width!) :
-                        CGFloat(Float(commandDelegate?.settings["LottieWidth".lowercased()] as? String ?? "0.2")!))
-                animationHeight = fullScreenzSize.height *
-                    (height != nil ?
-                        CGFloat(height!) :
-                        CGFloat(Float(commandDelegate?.settings["LottieHeight".lowercased()] as? String ?? "0.2")!))
-            } else {
-                animationWidth = CGFloat(width != nil ?
-                    width! :
-                    Int(commandDelegate?.settings["LottieWidth".lowercased()] as? String ?? "200")!)
-                animationHeight = CGFloat(height != nil
-                    ? height! :
-                    Int(commandDelegate?.settings["LottieHeight".lowercased()] as? String ?? "200")!)
-            }
-        }
+        animationView?.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         animationView?.frame = CGRect(x: 0, y: 0, width: animationWidth, height: animationHeight)
-        animationView?.center = CGPoint(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY)
+        animationView?.center = CGPoint(x: fullScreenSize.midX, y: fullScreenSize.midY)
     }
 
     private func playAnimation() {
@@ -259,22 +224,15 @@ import Lottie
             name: NSNotification.Name.CDVPageDidLoad,
             object: nil
         )
-
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(deviceOrientationChanged),
-            name: UIDevice.orientationDidChangeNotification,
-            object: nil
-        )
     }
 
     private func getUIModeDependentPreference(basePreferenceName: String, defaultValue: String = "") -> String {
         var preferenceValue = ""
         if #available(iOS 12.0, *) {
             if viewController.traitCollection.userInterfaceStyle == .dark {
-                preferenceValue = commandDelegate?.settings[(basePreferenceName + "Dark").lowercased()] as? String ?? defaultValue
+                preferenceValue = commandDelegate?.settings[(basePreferenceName + "Dark").lowercased()] as? String ?? ""
             } else {
-                preferenceValue = commandDelegate?.settings[(basePreferenceName + "Light").lowercased()] as? String ?? defaultValue
+                preferenceValue = commandDelegate?.settings[(basePreferenceName + "Light").lowercased()] as? String ?? ""
             }
         }
 
@@ -282,10 +240,6 @@ import Lottie
             preferenceValue = commandDelegate?.settings[basePreferenceName.lowercased()] as? String ?? defaultValue
         }
         return preferenceValue
-    }
-
-    @objc private func deviceOrientationChanged() {
-        animationView?.center = CGPoint(x: UIScreen.main.bounds.midX, y: UIScreen.main.bounds.midY)
     }
 }
 
